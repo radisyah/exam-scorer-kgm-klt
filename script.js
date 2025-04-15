@@ -12,13 +12,13 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAePHk2SUscllq5zjVz8nfDoi6OLDqX_40",
-  authDomain: "mec-kgm-klt-input-nilai-6c367.firebaseapp.com",
-  projectId: "mec-kgm-klt-input-nilai-6c367",
-  storageBucket: "mec-kgm-klt-input-nilai-6c367.firebasestorage.app",
-  messagingSenderId: "1075575468794",
-  appId: "1:1075575468794:web:0004896cf4e59a1aaacf43",
-  measurementId: "G-544XBNRY4L",
+  apiKey: "AIzaSyAGpqDZoKxd6oTtVuXt2Cc8U3XCZV6S5_w",
+  authDomain: "mec-kgm-klt.firebaseapp.com",
+  projectId: "mec-kgm-klt",
+  storageBucket: "mec-kgm-klt.firebasestorage.app",
+  messagingSenderId: "1001961428291",
+  appId: "1:1001961428291:web:3049033421bc8cad124bf6",
+  measurementId: "G-ZXGS4GLEEJ",
 };
 
 const app = initializeApp(firebaseConfig);
@@ -45,7 +45,7 @@ const itemsPerPage = 5;
 const itemsPerPageNilai = 5;
 
 // === KONFIGURASI MAINTENANCE ===
-const isUnderMaintenance = true; // Ubah menjadi true jika situs sedang perbaikan
+const isUnderMaintenance = false; // Ubah menjadi true jika situs sedang perbaikan
 
 // === CEK DAN ATUR TAMPILAN AKSES ===
 function checkMaintenance() {
@@ -111,7 +111,7 @@ document.getElementById("excelInput").addEventListener("change", (e) => {
     const workbook = XLSX.read(data, { type: "array" });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     siswaArray = XLSX.utils.sheet_to_json(sheet, {
-      header: ["nama", "kelas", "level", "cabang"],
+      header: ["noInduk", "nama", "kelas", "level", "cabang"], // ✅ Tambah ini
       range: 1,
     });
 
@@ -121,7 +121,7 @@ document.getElementById("excelInput").addEventListener("change", (e) => {
     }
 
     const invalidRows = siswaArray.filter(
-      (s) => !s.nama || !s.kelas || !s.level || !s.cabang
+      (s) => !s.noInduk || !s.nama || !s.kelas || !s.level || !s.cabang
     );
     if (invalidRows.length > 0) {
       Swal.fire(
@@ -134,9 +134,9 @@ document.getElementById("excelInput").addEventListener("change", (e) => {
 
     let htmlTable = "<table style='width:100%;text-align:left'>";
     htmlTable +=
-      "<tr><th>Nama</th><th>Kelas</th><th>Level</th><th>Cabang</th></tr>";
+      "<tr><th>noInduk</th><th>Nama</th><th>Kelas</th><th>Level</th><th>Cabang</th></tr>";
     siswaArray.forEach((s) => {
-      htmlTable += `<tr><td>${s.nama}</td><td>${s.kelas}</td><td>${s.level}</td><td>${s.cabang}</td></tr>`;
+      htmlTable += `<tr><td>${s.noInduk}</td><td>${s.nama}</td><td>${s.kelas}</td><td>${s.level}</td><td>${s.cabang}</td></tr>`;
     });
     htmlTable += "</table>";
 
@@ -177,10 +177,8 @@ document.getElementById("excelNilaiInput").addEventListener("change", (e) => {
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     siswaArray = XLSX.utils.sheet_to_json(sheet, {
       header: [
+        "noInduk",
         "nama",
-        "kelas",
-        "level",
-        "cabang",
         "reading",
         "listening",
         "writing",
@@ -197,10 +195,8 @@ document.getElementById("excelNilaiInput").addEventListener("change", (e) => {
 
     const invalidRows = siswaArray.filter(
       (s) =>
+        !s.noInduk ||
         !s.nama ||
-        !s.kelas ||
-        !s.level ||
-        !s.cabang ||
         !s.reading ||
         !s.listening ||
         !s.writing ||
@@ -217,9 +213,9 @@ document.getElementById("excelNilaiInput").addEventListener("change", (e) => {
 
     let htmlTable = "<table style='width:100%;text-align:left'>";
     htmlTable +=
-      "<tr><th>Nama</th><th>Kelas</th><th>Level</th><th>Cabang</th><th>Reading</th><th>Listening</th><th>Writing</th><th>Speaking</th><th>Matematika</th></tr>";
+      "<tr><th>No Induk</th><th>Nama</th><th>Reading</th><th>Listening</th><th>Writing</th><th>Speaking</th><th>Matematika</th></tr>";
     siswaArray.forEach((s) => {
-      htmlTable += `<tr><td>${s.nama}</td><td>${s.kelas}</td><td>${s.level}</td><td>${s.cabang}</td><td>${s.reading}</td><td>${s.listening}</td><td>${s.writing}</td><td>${s.speaking}</td><td>${s.matematika}</td></tr>`;
+      htmlTable += `<tr><td>${s.noInduk}</td><td>${s.nama}</td><td>${s.reading}</td><td>${s.listening}</td><td>${s.writing}</td><td>${s.speaking}</td><td>${s.matematika}</td></tr>`;
     });
     htmlTable += "</table>";
 
@@ -482,10 +478,8 @@ document
     if (!muridDipilih) return Swal.fire("❌ Belum memilih murid.");
 
     const nilai = {
+      noInduk: muridDipilih.noInduk || "",
       nama: muridDipilih.nama,
-      kelas: muridDipilih.kelas,
-      level: muridDipilih.level,
-      cabang: muridDipilih.cabang,
       reading: parseInt(document.getElementById("reading").value) || null,
       listening: parseInt(document.getElementById("listening").value) || null,
       writing: parseInt(document.getElementById("writing").value) || null,
@@ -532,29 +526,26 @@ cariNilaiInput.addEventListener(
 
     if (!keyword) return;
 
-    const data = nilaiCache.find(
-      (d) => d.nama.toLowerCase().includes(keyword) // Pastikan tanda kurung di sini lengkap.
-    );
+    const data = nilaiCache.find((d) => d.nama.toLowerCase().includes(keyword));
 
     if (data) {
+      // Cari murid dari cache murid berdasarkan nama
+      const murid = daftarMuridCache.find(
+        (m) => m.nama.toLowerCase() === data.nama.toLowerCase()
+      );
+
       hasilNilai.innerHTML = `
-      <div class="nilai-card">
-        <h3>${data.nama} - ${data.cabang}, Kelas ${data.kelas}, Level ${
-        data.level
-      }</h3>
-        <p>📖 Reading: ${data.reading !== null ? data.reading : "menunggu"}</p>
-        <p>🎧 Listening: ${
-          data.listening !== null ? data.listening : "menunggu"
-        }</p>
-        <p>✍️ Writing: ${data.writing !== null ? data.writing : "menunggu"}</p>
-        <p>🗣️ Speaking: ${
-          data.speaking !== null ? data.speaking : "menunggu"
-        }</p>
-        <p>🔢 Matematika: ${
-          data.matematika !== null ? data.matematika : "menunggu"
-        }</p>
-      </div>
-    `;
+        <div class="nilai-card">
+          <h3>${data.nama} - ${murid?.cabang || "-"}, Kelas ${
+        murid?.kelas || "-"
+      }, Level ${murid?.level || "-"}</h3>
+          <p>📖 Reading: ${data.reading ?? "menunggu"}</p>
+          <p>🎧 Listening: ${data.listening ?? "menunggu"}</p>
+          <p>✍️ Writing: ${data.writing ?? "menunggu"}</p>
+          <p>🗣️ Speaking: ${data.speaking ?? "menunggu"}</p>
+          <p>🔢 Matematika: ${data.matematika ?? "menunggu"}</p>
+        </div>
+      `;
     } else {
       hasilNilai.textContent = "❌ Nilai tidak ditemukan.";
     }
@@ -565,20 +556,24 @@ function renderMuridTablePage(data, page = 1) {
   const daftarMurid = document.getElementById("daftarMurid");
   daftarMurid.innerHTML = "";
 
+  const sorted = [...data].sort((a, b) =>
+    String(a.noInduk || "").localeCompare(String(b.noInduk || ""))
+  );
+
   const start = (page - 1) * itemsPerPage;
   const end = start + itemsPerPage;
-  const paginatedItems = data.slice(start, end);
+  const paginatedItems = sorted.slice(start, end);
 
   paginatedItems.forEach((murid) => {
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td class="sticky-col">${murid.nama}</td>
+      <td class="sticky-col">${murid.noInduk || "-"}</td>
+      <td>${murid.nama}</td>
       <td>${murid.kelas}</td>
       <td>${murid.level}</td>
       <td>${murid.cabang}</td>
       <td>
         <button class="btn-edit" data-nama="${murid.nama}">✏️ Edit</button>
-
         <button class="btn-delete" data-nama="${murid.nama}">🗑 Hapus</button>
       </td>
     `;
@@ -662,6 +657,7 @@ document.addEventListener("click", async (e) => {
       const data = docRef.data();
       editDocId = docRef.id;
 
+      document.getElementById("editNoInduk").value = data.noInduk || "";
       document.getElementById("editNama").value = data.nama || "";
       document.getElementById("editKelas").value = data.kelas || "";
       document.getElementById("editLevel").value = data.level || "";
@@ -691,6 +687,7 @@ document
     if (!editDocId) return;
 
     const updatedData = {
+      noInduk: document.getElementById("editNoInduk").value.trim(),
       nama: document.getElementById("editNama").value.trim(),
       kelas: document.getElementById("editKelas").value.trim(),
       level: document.getElementById("editLevel").value.trim(),
@@ -707,12 +704,10 @@ document
     try {
       await setDoc(doc(db, "murid", editDocId), updatedData);
 
-      // ✅ Update data di daftarMuridCache
-      const index = daftarMuridCache.findIndex(
-        (m) => m.nama === updatedData.nama
-      );
+      // ✅ Update cache
+      const index = daftarMuridCache.findIndex((m) => m.id === editDocId);
       if (index !== -1) {
-        daftarMuridCache[index] = updatedData;
+        daftarMuridCache[index] = { id: editDocId, ...updatedData };
       }
 
       Swal.fire({
@@ -723,7 +718,7 @@ document
         showConfirmButton: false,
       });
 
-      // ✅ Tutup modal dan render ulang
+      // ✅ Tutup modal & render ulang tabel
       const modal = document.getElementById("modalEditMurid");
       modal.classList.remove("show");
       setTimeout(() => modal.classList.add("hidden"), 300);
@@ -821,10 +816,8 @@ document
 
     try {
       const dataExport = nilaiCache.map((d) => ({
+        Noinduk: d.noInduk || "",
         Nama: d.nama || "",
-        Kelas: d.kelas || "",
-        Level: d.level || "",
-        Cabang: d.cabang || "",
         Reading: d.reading ?? "",
         Listening: d.listening ?? "",
         Writing: d.writing ?? "",
@@ -851,22 +844,165 @@ document
     }
   });
 
+function filterAndExportReadingByCabang(cabang) {
+  const ENDPOINT_KGM =
+    "https://script.google.com/macros/s/AKfycbywIwFoz7XUzKvfPMRFYrSlBXKCMgb0AH_yEFoPjtLbAft8VhaGkHjxorE_XuVN3IaTmw/exec";
+  const ENDPOINT_KLT =
+    "https://script.google.com/macros/s/AKfycbzgkNetCtix1Zsq-rb5LRhj4ygNpjvLWOmDhcwvGZqdHsI31QhweZKYTmcN_9nbAqXkfA/exec";
+
+  const endpoint = cabang.toUpperCase() === "KGM" ? ENDPOINT_KGM : ENDPOINT_KLT;
+
+  // Gabungkan nilai dengan murid (tambahkan noInduk & cabang)
+  const merged = nilaiCache.map((nilai) => {
+    const murid = daftarMuridCache.find(
+      (m) => m.nama.toLowerCase() === nilai.nama.toLowerCase()
+    );
+    return {
+      ...nilai,
+      cabang: murid?.cabang || "",
+      noInduk: murid?.noInduk || "",
+    };
+  });
+
+  // Filter berdasarkan cabang
+  const sorted = merged
+    .filter((n) =>
+      (n.cabang || "").toLowerCase().includes(cabang.toLowerCase())
+    )
+    .sort((a, b) =>
+      String(a.noInduk || "").localeCompare(String(b.noInduk || ""))
+    );
+
+  // 🚫 Jika tidak ada data murid dari cabang tersebut
+  if (sorted.length === 0) {
+    return Swal.fire({
+      icon: "info",
+      title: `❌ Tidak Ada Data ${cabang.toUpperCase()}`,
+      text: `Tidak ditemukan murid dari cabang ${cabang.toUpperCase()} di daftar nilai.`,
+    });
+  }
+
+  // Cek kelengkapan data
+  const incomplete = sorted.filter(
+    (n) =>
+      !n.noInduk ||
+      !n.nama ||
+      (!n.reading && n.reading !== 0) ||
+      (!n.listening && n.listening !== 0) ||
+      (!n.writing && n.writing !== 0) ||
+      (!n.speaking && n.speaking !== 0)
+  );
+
+  if (incomplete.length > 0) {
+    return Swal.fire({
+      icon: "warning",
+      title: `❌ Data ${cabang.toUpperCase()} Belum Lengkap`,
+      html: `Terdapat <b>${
+        incomplete.length
+      }</b> murid dari cabang ${cabang.toUpperCase()} yang belum memiliki nilai lengkap.<br>Lengkapi terlebih dahulu sebelum ekspor.`,
+    });
+  }
+
+  // Tampilkan preview
+  const previewTable = sorted
+    .map(
+      (n, i) => `
+        <tr>
+          <td>${i + 1}</td>
+          <td>${n.noInduk}</td>
+          <td>${n.nama}</td>
+          <td>${n.reading}</td>
+          <td>${n.listening}</td>
+          <td>${n.writing}</td>
+          <td>${n.speaking}</td>
+        </tr>`
+    )
+    .join("");
+
+  Swal.fire({
+    title: `📋 Konfirmasi Export Nilai ${cabang.toUpperCase()}`,
+    html: `
+        <p>Berikut adalah data yang akan dikirim ke spreadsheet:</p>
+        <div style="max-height: 300px; overflow-y: auto; text-align:left">
+          <table style="width:100%; font-size: 12px; border-collapse: collapse;" border="1" cellpadding="4">
+            <thead>
+              <tr style="background:#333; color:white">
+                <th>#</th>
+                <th>No Induk</th>
+                <th>Nama</th>
+                <th>Reading</th>
+                <th>Listening</th>
+                <th>Writing</th>
+                <th>Speaking</th>
+              </tr>
+            </thead>
+            <tbody>${previewTable}</tbody>
+          </table>
+        </div>
+      `,
+    width: 750,
+    showCancelButton: true,
+    confirmButtonText: "✅ Kirim Sekarang",
+  }).then(async (result) => {
+    if (!result.isConfirmed) return;
+
+    const payload = {
+      noInduk: sorted.map((n) => n.noInduk ?? ""),
+      reading: sorted.map((n) => n.reading ?? ""),
+      listening: sorted.map((n) => n.listening ?? ""),
+      writing: sorted.map((n) => n.writing ?? ""),
+      speaking: sorted.map((n) => n.speaking ?? ""),
+    };
+
+    Swal.fire({
+      title: "Mengirim data...",
+      text: `Sedang mengirim nilai ${cabang.toUpperCase()} ke spreadsheet...`,
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading(),
+    });
+
+    try {
+      await fetch(endpoint, {
+        method: "POST",
+        body: JSON.stringify(payload),
+        headers: { "Content-Type": "application/json" },
+        mode: "no-cors",
+      });
+
+      Swal.fire(
+        "✅ Sukses",
+        `Data ${cabang.toUpperCase()} berhasil dikirim ke spreadsheet.`,
+        "success"
+      );
+    } catch (err) {
+      console.error("❌ Gagal kirim:", err);
+      Swal.fire(
+        "❌ Gagal",
+        `Terjadi kesalahan saat mengirim data ${cabang.toUpperCase()}.`,
+        "error"
+      );
+    }
+  });
+}
+
 // Render nilai murid
 function renderNilaiMuridPage(data, page = 1) {
   const tbody = document.getElementById("daftarNilaiMurid");
   tbody.innerHTML = "";
 
+  const sorted = [...data].sort((a, b) =>
+    String(a.noInduk || "").localeCompare(String(b.noInduk || ""))
+  );
+
   const start = (page - 1) * itemsPerPageNilai;
   const end = start + itemsPerPageNilai;
-  const paginatedItems = data.slice(start, end);
+  const paginatedItems = sorted.slice(start, end);
 
   paginatedItems.forEach((item) => {
     const tr = document.createElement("tr");
     tr.innerHTML = `
+      <td>${item.noInduk}</td>
       <td class="sticky-col">${item.nama}</td>
-      <td>${item.kelas}</td>
-      <td>${item.level}</td>
-      <td>${item.cabang}</td>
       <td>${item.reading !== null ? item.reading : "menunggu"}</td>
       <td>${item.listening !== null ? item.listening : "menunggu"}</td>
       <td>${item.writing !== null ? item.writing : "menunggu"}</td>
@@ -1107,6 +1243,14 @@ function isiOpsiNilaiSelect() {
     });
   });
 }
+
+document.getElementById("exportReadingKGM").addEventListener("click", () => {
+  filterAndExportReadingByCabang("KGM");
+});
+
+document.getElementById("exportReadingKLT").addEventListener("click", () => {
+  filterAndExportReadingByCabang("KLT");
+});
 
 window.addEventListener("DOMContentLoaded", async () => {
   await loadCaches(); // ✅ Ambil semua data murid dan nilai sekali saja
