@@ -47,6 +47,179 @@ const itemsPerPageNilai = 5;
 // === KONFIGURASI MAINTENANCE ===
 const isUnderMaintenance = false; // Ubah menjadi true jika situs sedang perbaikan
 
+const kunciWriting = {
+  1: [
+    "B",
+    "A",
+    "D",
+    "D",
+    "C", // 1–5
+    "D",
+    "A",
+    "A",
+    "B",
+    "A", // 6–10
+    "A",
+    "B",
+    ["A", "B"],
+    "D",
+    "A", // 11–15 (13: dua jawaban benar)
+    "A",
+    "C",
+    "A",
+    "B",
+    "A", // 16–20
+    "A",
+    "D",
+    "A",
+    "A",
+    "D", // 21–25
+    "A",
+    "B",
+    "C",
+    "D",
+    "C", // 26–30
+    "B",
+    "B",
+    "C",
+    "C",
+    "B", // 31–35
+    "D",
+    "B",
+    "B",
+    "A",
+    "D", // 36–40
+  ],
+  2: [
+    "D",
+    "C",
+    "A",
+    "B",
+    "A",
+    "A",
+    "A",
+    "D",
+    "B",
+    "B",
+    "C",
+    "D",
+    "A",
+    "A",
+    "B",
+    "B",
+    "A",
+    "D",
+    "D",
+    "A",
+    "C",
+    "B",
+    "C",
+    "A",
+    "D",
+    "C",
+    "B",
+    "C",
+    ["A", "B", "C", "D"], // index 28 (no.29) = BONUS
+    "C", // no.30
+    "A",
+    "A",
+    "D",
+    "A",
+    "D", // index 36 (no.37) = BONUS
+    "A", // index 37 (no.38) = BONUS
+    ["A", "B", "C", "D"],
+    ["A", "B", "C", "D"],
+    "C",
+    "A",
+  ],
+  3: [
+    "A",
+    "D",
+    "A",
+    "B",
+    "C",
+    "B",
+    "A",
+    "C",
+    "A",
+    "D", // 1-10
+    "A",
+    "B",
+    "C",
+    "B",
+    "B",
+    "A",
+    "A",
+    ["A", "B", "C", "D"], // nomor 18 (index 17) = BONUS
+    "A",
+    "C",
+    "A",
+    "D",
+    "A",
+    "D",
+    "D",
+    "C",
+    "D",
+    "C", // 19-30
+    "A",
+    "B",
+    "B",
+    "A",
+    "B",
+    "C",
+    "A",
+    "C",
+    "D",
+    "B",
+    "B",
+    "A",
+  ],
+  4: [
+    "B",
+    "A",
+    "B",
+    "C",
+    "C", // 1–5
+    "D",
+    "A",
+    "B",
+    "A",
+    "C", // 6–10
+    "B",
+    "D",
+    "A",
+    "C",
+    "B", // 11–15
+    "B",
+    "A",
+    "D",
+    "B",
+    "A", // 16–20
+    "A",
+    "A",
+    "B",
+    "A",
+    "A", // 21–25
+    "D",
+    "C",
+    "A",
+    "D",
+    "A", // 26–30
+    "D",
+    "A",
+    "A",
+    "C",
+    "B", // 31–35
+    "D",
+    "C",
+    "C",
+    "B",
+    "D", // 36–40
+  ],
+};
+
+let inputModeWriting = "manual"; // atau "otomatis"
+
 // === CEK DAN ATUR TAMPILAN AKSES ===
 function checkMaintenance() {
   if (isUnderMaintenance) {
@@ -264,6 +437,7 @@ function initInputCari() {
 
       if (hasil) {
         muridDipilih = hasil;
+        resetInputWriting();
         hasilCari.textContent = `Ditemukan: ${hasil.nama} (Kelas ${hasil.kelas}, Level ${hasil.level}, Cabang ${hasil.cabang})`;
         judulFormNilai.textContent = `Input / Edit nilai untuk ${hasil.nama}`;
 
@@ -273,7 +447,23 @@ function initInputCari() {
 
         document.getElementById("reading").value = data?.reading ?? "";
         document.getElementById("listening").value = data?.listening ?? "";
-        document.getElementById("writing").value = data?.writing ?? "";
+        // ✅ Tambahan untuk writing (agar nilai apapun tetap tampil)
+        const selectWriting = document.getElementById("writing");
+        const nilaiWriting = data?.writing;
+
+        if (
+          nilaiWriting !== null &&
+          nilaiWriting !== undefined &&
+          !Array.from(selectWriting.options).some(
+            (opt) => opt.value == nilaiWriting
+          )
+        ) {
+          const newOption = document.createElement("option");
+          newOption.value = nilaiWriting;
+          newOption.textContent = nilaiWriting;
+          selectWriting.appendChild(newOption);
+        }
+        selectWriting.value = nilaiWriting ?? "";
         document.getElementById("speaking").value = data?.speaking ?? "";
         document.getElementById("matematika").value = data?.matematika ?? "";
 
@@ -339,9 +529,6 @@ async function simpanNilaiTanpaDuplikat(siswaArray) {
   let berhasil = 0;
   let duplikat = [];
 
-  // Reset daftarMuridCache sebelum proses baru dimulai
-  daftarMuridCache = [];
-
   Swal.fire({
     title: "Menyimpan data...",
     html: `
@@ -356,25 +543,35 @@ async function simpanNilaiTanpaDuplikat(siswaArray) {
   });
 
   for (let i = 0; i < total; i++) {
-    const siswa = siswaArray[i];
+    const s = siswaArray[i];
 
-    // Pengecekan duplikat di Firestore
+    const siswa = {
+      noInduk: s.noInduk?.toString().trim() || "",
+      nama: s.nama?.toString().trim() || "",
+      reading: s.reading !== undefined ? parseInt(s.reading) : null,
+      listening: s.listening !== undefined ? parseInt(s.listening) : null,
+      writing: s.writing !== undefined ? parseInt(s.writing) : null,
+      speaking: s.speaking !== undefined ? parseInt(s.speaking) : null,
+      matematika: s.matematika !== undefined ? parseInt(s.matematika) : null,
+      tanggal: new Date().toISOString(),
+    };
+
+    if (!siswa.nama || !siswa.noInduk) {
+      continue; // skip baris tidak valid
+    }
+
     const querySnapshot = await getDocs(
       query(collection(db, "nilai"), where("nama", "==", siswa.nama))
     );
 
     if (!querySnapshot.empty) {
-      // Jika ada data yang sudah ada di Firestore, tandai sebagai duplikat
       duplikat.push(siswa.nama);
     } else {
-      // Jika tidak ada duplikat, simpan data ke Firestore
-      const docRef = await addDoc(collection(db, "nilai"), siswa);
-      // Tambahkan siswa ke cache
-      daftarMuridCache.push({ id: docRef.id, ...siswa });
+      await setDoc(doc(db, "nilai", siswa.nama.toLowerCase()), siswa);
       berhasil++;
     }
 
-    // Update progress bar
+    // Progress bar
     const percent = Math.floor(((i + 1) / total) * 100);
     document.getElementById("progressBar").style.width = `${percent}%`;
     document.getElementById("progressText").textContent = `${
@@ -382,7 +579,6 @@ async function simpanNilaiTanpaDuplikat(siswaArray) {
     } / ${total} diproses`;
   }
 
-  // Setelah selesai, tampilkan notifikasi
   Swal.fire({
     icon: duplikat.length ? "warning" : "success",
     title: "Selesai",
@@ -391,7 +587,6 @@ async function simpanNilaiTanpaDuplikat(siswaArray) {
     }`,
   });
 
-  // Reset input file setelah selesai
   document.getElementById("excelNilaiInput").value = "";
 }
 
@@ -472,17 +667,164 @@ function debounce(func, delay = 300) {
 //   }, 300)
 // );
 
+document.getElementById("toggleModeWriting").addEventListener("change", (e) => {
+  const isChecked = e.target.checked;
+  inputModeWriting = isChecked ? "otomatis" : "manual";
+
+  // Toggle tampilan
+  document.getElementById("writing").disabled = isChecked;
+  document
+    .getElementById("writingSoalContainer")
+    .classList.toggle("hidden", !isChecked);
+});
+
+function resetInputWriting() {
+  const inputs = document.querySelectorAll(".jawaban-writing");
+  inputs.forEach((input) => {
+    input.value = "";
+    input.style.backgroundColor = "#2a2a3b"; // Warna default
+  });
+}
+
+function generateWritingInputs() {
+  const group = document.getElementById("soalWritingGroup");
+  group.innerHTML = ""; // reset
+  const placeholders = ["A", "B", "C", "D"];
+  for (let i = 1; i <= 40; i++) {
+    const placeholder = placeholders[(i - 1) % 4]; // A B C D ulang
+    const soal = document.createElement("div");
+    soal.classList.add("soal-item");
+    soal.innerHTML = `
+      <span class="soal-no">${i}.</span>
+      <input
+        type="text"
+        class="jawaban-writing"
+        maxlength="1"
+        placeholder="${placeholder}"
+        data-index="${i - 1}"
+      />
+    `;
+    group.appendChild(soal);
+  }
+}
+
+document.addEventListener("keydown", (e) => {
+  if (!e.target.classList.contains("jawaban-writing")) return;
+
+  const index = parseInt(e.target.dataset.index);
+  if (e.key === "Backspace" && e.target.value === "") {
+    const prev = document.querySelector(
+      `.jawaban-writing[data-index="${index - 1}"]`
+    );
+    if (prev) prev.focus();
+  }
+});
+
+document.addEventListener("input", (e) => {
+  if (!e.target.classList.contains("jawaban-writing")) return;
+
+  let value = e.target.value.toUpperCase().trim();
+
+  // Batasi hanya A, B, C, D
+  if (!["A", "B", "C", "D"].includes(value)) {
+    e.target.value = ""; // Hapus kalau bukan A-D
+    e.target.style.backgroundColor = "#2a2a3b";
+    return;
+  }
+
+  e.target.value = value; // Set ke huruf besar
+
+  const index = parseInt(e.target.dataset.index);
+  const level = muridDipilih?.level;
+  const kunci = kunciWriting[level];
+
+  if (kunci && kunci[index]) {
+    let isCorrect = false;
+
+    // Khusus Level 1, no 13
+    if (level === 1 && index === 12) {
+      isCorrect = value === "A" || value === "B";
+    } else if (level === 3 && index === 17) {
+      isCorrect = true; // Bonus soal level 3
+    } else {
+      const kunciNomor = kunci[index];
+      isCorrect = Array.isArray(kunciNomor)
+        ? kunciNomor.includes(value)
+        : value === kunciNomor;
+    }
+
+    e.target.style.backgroundColor = isCorrect ? "#28a745" : "#dc3545";
+  }
+
+  // Fokus ke input berikutnya
+  const next = document.querySelector(
+    `.jawaban-writing[data-index="${index + 1}"]`
+  );
+  if (next) next.focus();
+});
+
 document
   .getElementById("simpanNilaiBtn")
   .addEventListener("click", async () => {
     if (!muridDipilih) return Swal.fire("❌ Belum memilih murid.");
+
+    const nama = muridDipilih.nama;
+    const level = muridDipilih.level;
+
+    let writingScore = null;
+
+    if (inputModeWriting === "otomatis") {
+      const jawabanUser = Array.from(
+        document.querySelectorAll(".jawaban-writing")
+      ).map((el) => el.value.toUpperCase().trim());
+
+      if (
+        jawabanUser.length < 40 ||
+        jawabanUser.some((j) => !["A", "B", "C", "D"].includes(j))
+      ) {
+        return Swal.fire(
+          "❌ Jawaban tidak valid",
+          "Isi semua soal dengan A-D",
+          "warning"
+        );
+      }
+
+      const kunci = kunciWriting[level];
+      if (!kunci || kunci.length !== 40) {
+        return Swal.fire(
+          "❌ Error",
+          "Kunci Writing belum tersedia atau tidak valid.",
+          "error"
+        );
+      }
+
+      // ✅ Hitung jumlah benar dengan logika fleksibel
+      const benar = jawabanUser.filter((j, i) => {
+        const kunciNomor = kunci[i];
+
+        if (Array.isArray(kunciNomor)) {
+          return kunciNomor.includes(j);
+        }
+
+        return j === kunciNomor;
+      }).length;
+
+      const skorAwal = benar * 2.5;
+
+      // ✅ Pembulatan: .5 ke atas, lainnya dibulatkan normal
+      writingScore =
+        skorAwal % 1 === 0.5 ? Math.ceil(skorAwal) : Math.round(skorAwal);
+    } else {
+      // Manual input
+      writingScore = parseInt(document.getElementById("writing").value) || null;
+    }
 
     const nilai = {
       noInduk: muridDipilih.noInduk || "",
       nama: muridDipilih.nama,
       reading: parseInt(document.getElementById("reading").value) || null,
       listening: parseInt(document.getElementById("listening").value) || null,
-      writing: parseInt(document.getElementById("writing").value) || null,
+      writing: writingScore,
       speaking: parseInt(document.getElementById("speaking").value) || null,
       matematika: parseInt(document.getElementById("matematika").value) || null,
       tanggal: new Date().toISOString(),
@@ -498,12 +840,25 @@ document
         merge: true,
       });
 
-      // ✅ Update nilaiCache LOKAL
+      // ✅ Update cache
       const index = nilaiCache.findIndex((n) => n.nama === muridDipilih.nama);
       if (index !== -1) nilaiCache[index] = { ...nilaiCache[index], ...nilai };
       else nilaiCache.push({ id: muridDipilih.nama.toLowerCase(), ...nilai });
 
-      Swal.fire("✅ Nilai disimpan", "", "success");
+      if (inputModeWriting === "otomatis") {
+        Swal.fire(
+          "✅ Nilai Writing Disimpan",
+          `${nama} mendapatkan ${writingScore} untuk Writing`,
+          "success"
+        ).then(() => {
+          window.location.reload(); // ⬅️ Tambahkan ini
+        });
+      } else {
+        Swal.fire("✅ Nilai berhasil disimpan", "", "success").then(() => {
+          window.location.reload(); // ⬅️ Tambahkan ini juga
+        });
+      }
+
       resetFormNilai();
       sembunyikanFormNilai();
       renderNilaiMuridPage(nilaiCache, currentPageNilai); // opsional
@@ -885,39 +1240,39 @@ function filterAndExportNilaiInggirsByCabang(cabang) {
   const previewTable = sorted
     .map(
       (n, i) => `
-              <tr>
-                <td>${i + 1}</td>
-                <td>${n.noInduk || "-"}</td>
-                <td>${n.nama || "-"}</td>
-                <td>${n.reading ?? ""}</td>
-                <td>${n.listening ?? ""}</td>
-                <td>${n.writing ?? ""}</td>
-                <td>${n.speaking ?? ""}</td>
-              </tr>`
+            <tr>
+              <td>${i + 1}</td>
+              <td>${n.noInduk || "-"}</td>
+              <td>${n.nama || "-"}</td>
+              <td>${n.reading ?? ""}</td>
+              <td>${n.listening ?? ""}</td>
+              <td>${n.writing ?? ""}</td>
+              <td>${n.speaking ?? ""}</td>
+            </tr>`
     )
     .join("");
 
   Swal.fire({
     title: `📋 Konfirmasi Export Nilai ${cabang.toUpperCase()}`,
     html: `
-              <p>Berikut adalah data yang akan dikirim ke spreadsheet:</p>
-              <div style="max-height: 300px; overflow-y: auto; text-align:left">
-                <table style="width:100%; font-size: 12px; border-collapse: collapse;" border="1" cellpadding="4">
-                  <thead>
-                    <tr style="background:#333; color:white">
-                      <th>#</th>
-                      <th>No Induk</th>
-                      <th>Nama</th>
-                      <th>Reading</th>
-                      <th>Listening</th>
-                      <th>Writing</th>
-                      <th>Speaking</th>
-                    </tr>
-                  </thead>
-                  <tbody>${previewTable}</tbody>
-                </table>
-              </div>
-            `,
+            <p>Berikut adalah data yang akan dikirim ke spreadsheet:</p>
+            <div style="max-height: 300px; overflow-y: auto; text-align:left">
+              <table style="width:100%; font-size: 12px; border-collapse: collapse;" border="1" cellpadding="4">
+                <thead>
+                  <tr style="background:#333; color:white">
+                    <th>#</th>
+                    <th>No Induk</th>
+                    <th>Nama</th>
+                    <th>Reading</th>
+                    <th>Listening</th>
+                    <th>Writing</th>
+                    <th>Speaking</th>
+                  </tr>
+                </thead>
+                <tbody>${previewTable}</tbody>
+              </table>
+            </div>
+          `,
     width: 750,
     showCancelButton: true,
     confirmButtonText: "✅ Kirim Sekarang",
@@ -1005,33 +1360,33 @@ function filterAndExportNilaiMatematikaByCabang(cabang) {
   const previewTable = sorted
     .map(
       (n, i) => `
-          <tr>
-            <td>${i + 1}</td>
-            <td>${n.noInduk}</td>
-            <td>${n.nama}</td>
-            <td>${n.matematika ?? ""}</td>
-          </tr>`
+        <tr>
+          <td>${i + 1}</td>
+          <td>${n.noInduk}</td>
+          <td>${n.nama}</td>
+          <td>${n.matematika ?? ""}</td>
+        </tr>`
     )
     .join("");
 
   Swal.fire({
     title: `📋 Konfirmasi Export Nilai Matematika ${cabang.toUpperCase()}`,
     html: `
-          <p>Berikut adalah data yang akan dikirim ke spreadsheet:</p>
-          <div style="max-height: 300px; overflow-y: auto; text-align:left">
-            <table style="width:100%; font-size: 12px; border-collapse: collapse;" border="1" cellpadding="4">
-              <thead>
-                <tr style="background:#333; color:white">
-                  <th>#</th>
-                  <th>No Induk</th>
-                  <th>Nama</th>
-                  <th>Matematika</th>
-                </tr>
-              </thead>
-              <tbody>${previewTable}</tbody>
-            </table>
-          </div>
-        `,
+        <p>Berikut adalah data yang akan dikirim ke spreadsheet:</p>
+        <div style="max-height: 300px; overflow-y: auto; text-align:left">
+          <table style="width:100%; font-size: 12px; border-collapse: collapse;" border="1" cellpadding="4">
+            <thead>
+              <tr style="background:#333; color:white">
+                <th>#</th>
+                <th>No Induk</th>
+                <th>Nama</th>
+                <th>Matematika</th>
+              </tr>
+            </thead>
+            <tbody>${previewTable}</tbody>
+          </table>
+        </div>
+      `,
     width: 600,
     showCancelButton: true,
     confirmButtonText: "✅ Kirim Sekarang",
@@ -1325,12 +1680,26 @@ function isiOpsiNilaiSelect() {
   ].forEach((id) => {
     const select = document.getElementById(id);
     select.innerHTML = "";
-    nilaiOptions.forEach((val) => {
-      const option = document.createElement("option");
-      option.value = val;
-      option.textContent = val === "" ? id.replace("edit", "") : val;
-      select.appendChild(option);
+
+    // Tambah nilai yang ada di cache jika belum masuk daftar option
+    const nilaiUnik = new Set(nilaiOptions);
+    nilaiCache.forEach((item) => {
+      const key = id.replace("edit", "").toLowerCase();
+      const nilai = item[key];
+      if (nilai !== undefined && nilai !== null && !nilaiUnik.has(nilai)) {
+        nilaiUnik.add(nilai);
+      }
     });
+
+    // Urutkan dan masukkan ke option
+    Array.from(nilaiUnik)
+      .sort((a, b) => (a === "" ? -1 : a - b))
+      .forEach((val) => {
+        const option = document.createElement("option");
+        option.value = val;
+        option.textContent = val === "" ? id.replace("edit", "") : val;
+        select.appendChild(option);
+      });
   });
 }
 
@@ -1360,4 +1729,5 @@ window.addEventListener("DOMContentLoaded", async () => {
   renderNilaiMuridPage(nilaiCache, currentPageNilai); // ✅ Render nilai dari cache
   isiOpsiNilaiSelect();
   initInputCari(); // ⬅️ tambahkan ini di sini
+  generateWritingInputs(); // panggil saat halaman load
 });
